@@ -1,0 +1,130 @@
+---
+title: "Project4"
+author: "Lv Junlu"
+date: "2021/4/10"
+output:
+  word_document:
+    toc: yes
+  html_document:
+    toc: yes
+---
+
+# redwine数据集---模型构建
+
+## 1、读取数据
+
+```{r}
+library(e1071)
+library(rattle)
+redwine<-read.csv('D:/BaiduNetdiskDownload/winequality-red.csv',
+                  head=T,sep=";") #从本地读取数据,分隔符号为；
+mydata<-redwine[1:800,-1:-5] #因为数据集太大，因此舍去一些
+head(mydata)#查看mydata的前六行
+```
+
+## 2、构建Linear线性模型
+
+```{r}
+library(MASS)
+lin1 <- lda(quality~.,data=mydata)
+lin1
+summary(lin1)
+```
+
+```{r}
+lin2 <- lm(quality~.,data=mydata)
+summary(lin2)
+```
+
+## 3、构建SVM模型
+
+### 3.1、采用linear核函数
+
+```{r}
+#将mydata中的quality转换成因子变量
+mydata$quality<-as.factor(mydata$quality)
+summary(mydata$quality)
+
+## 数据分类
+s<-sample(800,800*0.7,replace=F)#从mydata中随机地挑选数据，挑选的数据不能放回
+length(s)#确定s的样本量
+train<-mydata[s,] #将70%的mydata数据赋给train，作为训练集
+test<-mydata[-s,] #将剩余的30%mydata数据赋给test，作为测试集
+dim(test)
+```
+
+```{r}
+#用SVM的方法对mydata构建模型，因变量为quality，自变量为剩余所有列（自变量）；所选用的核函数为linear
+model1 <- svm(quality~.,data=train,kernel='linear')
+summary(model1)#对构建的SVM模型进行查看
+```
+
+```{r}
+p1<-predict(model1,test)#对测试集中的数据用model1模型进行预测
+p1
+```
+
+```{r}
+t1<-table(p1,test$quality)#对p1中的结果进行混淆矩阵分析
+t1
+acc1<-sum(diag(t1))/nrow(test) #这个模型的准确度检查
+acc1
+```
+
+### 3.2、采用polynomial核函数
+
+```{r}
+model2 <- svm(quality~.,data=train,kernel='polynomial')
+summary(model2)
+p2<-predict(model2,test)#对测试集中的数据用model2模型进行预测
+p2
+t2<-table(p2,test$quality)#对p2中的结果进行混淆矩阵分析
+t2
+acc2<-sum(diag(t2))/nrow(test) #这个模型的准确度检查
+acc2
+```
+
+## 4、构建随机森林模型
+
+```{r}
+rf<-randomForest::randomForest(quality~.,data=train)
+rf
+rn <- round(randomForest::importance(rf), 2)
+rn[order(rn, decreasing=TRUE),]
+rfp <- ggVarImp(rf,title="Variable Importance") #将mydata数据集中的自变量因子的重要性进行排列
+rfp
+```
+
+## 5、对各个因素进行评估
+
+### 5.1、free.sulfur.dioxide
+
+![](images/free.png)
+
+### 5.2、free.sulfur.dioxide+pH
+
+![](images/free+pH.png)
+
+### 5.3、free.sulfur.dioxide+pH+density
+
+![](images/free+pH+density.png)
+
+### 5.4、free.sulfur.dioxide+pH+density+sulphates
+
+![](images/free+pH+density+sulphates.png)
+
+### 5.5、free.sulfur.dioxide+pH+density+sulphates+alcohol
+
+![](images/free+pH+density+sulphates+alcohol.png)
+
+### 5.6、all
+
+![](images/all.png)
+
+## 6、所有因素构建的SVM模型的准确度检测
+
+![](images/86792433fe6ed6a6727cbe71e4f3510.png)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
